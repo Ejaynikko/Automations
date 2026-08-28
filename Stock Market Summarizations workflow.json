@@ -1,0 +1,441 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Create a daily stock market email using the stock data provided below.\n\nThe data has already been calculated and ranked. Do not recalculate it.\n\nWrite the actual values into the email.\n\nInclude:\n\n1. A \"Daily Stock Market Summary\" heading.\n2. An \"All Stocks\" section showing every stock's ticker, closing price, and percentage change.\n3. A \"Biggest Gainers\" section showing the 3 stocks in the gainers array.\n4. A \"Biggest Losers\" section showing the 3 stocks in the losers array.\n5. An \"Overall Assessment\" section describing whether the market was generally positive, negative, or mixed based on the provided data.\n\nReturn ONLY the completed HTML email.\n\nUse only:\n\n<p>\n<ul>\n<li>\n<b>\n\nDo NOT use Markdown.\nDo NOT use ```html.\nDo NOT use {{#each}}.\nDo NOT use placeholders such as {{ticker}}, {{close}}, or {{change}}.\nDo NOT say that data is missing.\nDo NOT ask for additional information.\n\nHere is the actual data:\n\n{{ JSON.stringify($json) }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "b25a3604-d937-48d6-a75a-5c91f4873748",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "868ade8b-2281-4c95-93f7-c9268f895f7b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "jerielnikko@gmail.com",
+        "subject": "Summarizations of Stock Market",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        -32
+      ],
+      "id": "17f465fb-4ad3-4d8d-a50f-28a223abc47f",
+      "name": "Send a message",
+      "webhookId": "62658f4f-59fc-4858-add2-17be276867d3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "79VQClHjGOAtUYAx",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "symbols": "SPY,DIA,QQQ,AAPL,MSFT,GOOGL,AMZN,TSLA,NVDA,META",
+        "filters": {
+          "latest": true
+        }
+      },
+      "type": "n8n-nodes-base.marketstack",
+      "typeVersion": 1,
+      "position": [
+        16,
+        32
+      ],
+      "id": "1f2dfd53-8438-491f-962a-0669dec2951e",
+      "name": "Get many EoD data",
+      "credentials": {
+        "marketstackApi": {
+          "id": "HE0tvEg646EUHvwN",
+          "name": "Marketstack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "stocks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        240,
+        32
+      ],
+      "id": "7d07204a-7009-469f-8e54-c6cd4ee626b8",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "model": "minimax/minimax-m2.7:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        624,
+        192
+      ],
+      "id": "e6043573-c522-4160-ae78-e0c0b08e0230",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "KbU4zQRz1Qf8DiPB",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const stocks = $input.first().json.stocks;\n\nconst processedStocks = stocks.map(stock => {\n  const change = ((stock.close - stock.open) / stock.open) * 100;\n\n  return {\n    ticker: stock.symbol,\n    close: Number(stock.close.toFixed(2)),\n    change: Number(change.toFixed(2))\n  };\n});\n\nconst sorted = [...processedStocks].sort((a, b) => b.change - a.change);\n\nreturn [\n  {\n    json: {\n      stocks: processedStocks,\n      gainers: sorted.slice(0, 3),\n      losers: sorted.slice(-3).reverse()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        32
+      ],
+      "id": "176079d7-504b-4792-92d6-fd80addb3996",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "id": "8f1b1a2e-1111-4a11-9b1a-schedule0001",
+          "name": "Schedule Trigger (7AM Daily)",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "typeVersion": 1.2,
+          "position": [
+            220,
+            300
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "days",
+                  "triggerAtHour": 7,
+                  "triggerAtMinute": 0
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "Get many EoD data": [
+      {
+        "json": {
+          "open": 764.73,
+          "high": 767.35,
+          "low": 763.93,
+          "close": 766.08,
+          "volume": 27260923,
+          "adj_high": 767.35,
+          "adj_low": 763.93,
+          "adj_close": 766.08,
+          "adj_open": 764.73,
+          "adj_volume": 28751592,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "SPY",
+          "exchange": "ARCX",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 535.34,
+          "high": 535.95,
+          "low": 533.31,
+          "close": 534.23,
+          "volume": 1702128,
+          "adj_high": 535.95,
+          "adj_low": 533.31,
+          "adj_close": 534.23,
+          "adj_open": 535.34,
+          "adj_volume": 1761334,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "DIA",
+          "exchange": "ARCX",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 708.5,
+          "high": 713.018,
+          "low": 707.97,
+          "close": 711.37,
+          "volume": 18464999,
+          "adj_high": 713.018,
+          "adj_low": 707.97,
+          "adj_close": 711.37,
+          "adj_open": 708.5,
+          "adj_volume": 20392390,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "QQQ",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 310.245,
+          "high": 315.43,
+          "low": 308.8001,
+          "close": 313.45,
+          "volume": 33571543,
+          "adj_high": 315.43,
+          "adj_low": 308.8001,
+          "adj_close": 313.45,
+          "adj_open": 310.245,
+          "adj_volume": 34024486,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "AAPL",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 487.85,
+          "high": 497.4,
+          "low": 487.31,
+          "close": 496.37,
+          "volume": 19997284,
+          "adj_high": 497.4,
+          "adj_low": 487.31,
+          "adj_close": 496.37,
+          "adj_open": 487.85,
+          "adj_volume": 20758853,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "MSFT",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 346.62,
+          "high": 346.88,
+          "low": 340.18,
+          "close": 342,
+          "volume": 20094343,
+          "adj_high": 346.88,
+          "adj_low": 340.18,
+          "adj_close": 342,
+          "adj_open": 346.62,
+          "adj_volume": 20420257,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "GOOGL",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 261.275,
+          "high": 262.05,
+          "low": 258.24,
+          "close": 260.28,
+          "volume": 20669810,
+          "adj_high": 262.05,
+          "adj_low": 258.24,
+          "adj_close": 260.28,
+          "adj_open": 261.275,
+          "adj_volume": 21528373,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "AMZN",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 345.25,
+          "high": 351.93,
+          "low": 342.53,
+          "close": 345.82,
+          "volume": 28245570,
+          "adj_high": 351.93,
+          "adj_low": 342.53,
+          "adj_close": 345.82,
+          "adj_open": 345.25,
+          "adj_volume": 28573007,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "TSLA",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 212.64,
+          "high": 213.6,
+          "low": 209.23,
+          "close": 209.66,
+          "volume": 179900000,
+          "adj_high": 213.6,
+          "adj_low": 209.23,
+          "adj_close": 209.66,
+          "adj_open": 212.64,
+          "adj_volume": 179900003,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "NVDA",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      },
+      {
+        "json": {
+          "open": 590.4375,
+          "high": 593.27,
+          "low": 561.945,
+          "close": 576.14,
+          "volume": 31187505,
+          "adj_high": 593.27,
+          "adj_low": 561.945,
+          "adj_close": 576.14,
+          "adj_open": 590.4375,
+          "adj_volume": 31416337,
+          "split_factor": 1,
+          "dividend": 0,
+          "symbol": "META",
+          "exchange": "XNAS",
+          "date": "2026-08-26T00:00:00+0000"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many EoD data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many EoD data": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Manila",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "f06de494-41d3-41b1-9ef0-9129f8a1d704",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "31c901ac9cc0279eed4a1f4b27a233da828593bdaddd586a758f3bf09efe837f"
+  },
+  "nodeGroups": [],
+  "id": "MF2Fi13PWXnYmw5m",
+  "tags": []
+}
